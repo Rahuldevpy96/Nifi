@@ -1,0 +1,66 @@
+import groovy.json.JsonSlurper
+import java.net.HttpURLConnection
+import java.net.URL
+
+def nifiApiUrl = " "
+def test1ProcessGroupID = " "
+def test2ProcessGroupID = " "
+def checkIntervalMillis = 5000  
+
+def getHttpResponseBody(String requestUrl) {
+    URL url = new URL(requestUrl)
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection()
+    connection.setRequestMethod("GET")
+    connection.connect()
+
+    int responseCode = connection.getResponseCode()
+    if (responseCode == HttpURLConnection.HTTP_OK) {
+        connection.getInputStream().getText()
+    } else {
+        throw new RuntimeException("Failed to make HTTP GET request: ${responseCode}")
+    }
+}
+
+def putHttpRequest(String requestUrl, String requestBody) {
+    URL url = new URL(requestUrl)
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection()
+    connection.setRequestMethod("PUT")
+    connection.setRequestProperty("Content-Type", "application/json")
+    connection.setDoOutput(true)
+
+    connection.getOutputStream().write(requestBody.getBytes("UTF-8"))
+    connection.connect()
+
+    int responseCode = connection.getResponseCode()
+    if (responseCode != HttpURLConnection.HTTP_OK) {
+        throw new RuntimeException("Failed to make HTTP PUT request: ${responseCode}")
+    }
+}
+
+def isProcessGroupCompleted(String processGroupID) {
+    String responseBody = getHttpResponseBody("${nifiApiUrl}/process-groups/${processGroupID}/status")
+    JsonSlurper jsonSlurper = new JsonSlurper()
+    def json = jsonSlurper.parseText(responseBody)
+
+    boolean isCompleted = json.processGroupStatus.aggregateSnapshot.activeThreadCount == 0 &&
+            json.processGroupStatus.aggregateSnapshot.queuedCount == 0
+
+    return isCompleted
+}
+
+def startProcessGroup(String processGroupID) {
+    String requestBody = "{\"id\":\"${processGroupID}\", \"state\":\"RUNNING\"}"
+    putHttpRequest("${nifiApiUrl}/process-groups/${processGroupID}", requestBody)
+}
+
+// Start Test1 process group
+startProcessGroup(test1ProcessGroupID)
+
+ 
+while (!isProcessGroupCompleted(test1ProcessGroupID)) {
+  
+    Thread.sleep(checkIntervalMillis)
+}
+
+ 
+startProcessGroup(test2ProcessGroupID)

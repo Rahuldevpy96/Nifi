@@ -1,0 +1,45 @@
+import groovy.json.JsonSlurper
+import org.apache.http.client.methods.CloseableHttpResponse
+import org.apache.http.client.methods.HttpGet
+import org.apache.http.client.methods.HttpPut
+import org.apache.http.entity.StringEntity
+import org.apache.http.impl.client.CloseableHttpClient
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.util.EntityUtils
+
+def nifiApiUrl = "p"
+def test1ProcessGroupID = ""
+def test2ProcessGroupID = ""
+
+def isProcessGroupCompleted(String processGroupID) {
+    CloseableHttpClient httpClient = HttpClients.createDefault()
+    HttpGet httpGet = new HttpGet("${nifiApiUrl}/process-groups/${processGroupID}/status")
+    CloseableHttpResponse response = httpClient.execute(httpGet)
+    String responseBody = EntityUtils.toString(response.getEntity())
+
+    JsonSlurper jsonSlurper = new JsonSlurper()
+    def json = jsonSlurper.parseText(responseBody)
+
+    boolean isCompleted = json.processGroupStatus.aggregateSnapshot.activeThreadCount == 0 &&
+            json.processGroupStatus.aggregateSnapshot.queuedCount == 0
+
+    httpClient.close()
+
+    return isCompleted
+}
+
+def startProcessGroup(String processGroupID) {
+    CloseableHttpClient httpClient = HttpClients.createDefault()
+    HttpPut httpPut = new HttpPut("${nifiApiUrl}/process-groups/${processGroupID}")
+    StringEntity input = new StringEntity("{\"id\":\"${processGroupID}\", \"state\":\"RUNNING\"}", "UTF-8")
+    input.setContentType("application/json")
+    httpPut.setEntity(input)
+    CloseableHttpResponse response = httpClient.execute(httpPut)
+    httpClient.close()
+}
+
+if (isProcessGroupCompleted(test1ProcessGroupID)) {
+    startProcessGroup(test2ProcessGroupID)
+} else {
+    startProcessGroup(test1ProcessGroupID)
+}

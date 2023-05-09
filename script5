@@ -1,0 +1,68 @@
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+import java.net.HttpURLConnection
+import java.net.URL
+
+ 
+def checkIntervalMillis = 5000  
+
+def nifiApiUrl =  
+ 
+def nifiUsername = " "
+def nifiPassword = " password"
+ 
+def getAccessToken() {
+    String tokenUrl = "${nifiApiUrl}/access/token"
+    URL url = new URL(tokenUrl)
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection()
+    connection.setRequestMethod("POST")
+    connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+    connection.setDoOutput(true)
+
+    String authData = "username=${URLEncoder.encode(nifiUsername, 'UTF-8')}&password=${URLEncoder.encode(nifiPassword, 'UTF-8')}"
+    connection.getOutputStream().write(authData.getBytes("UTF-8"))
+    connection.connect()
+
+    int responseCode = connection.getResponseCode()
+    if (responseCode == HttpURLConnection.HTTP_OK) {
+        connection.getInputStream().getText()
+    } else {
+        throw new RuntimeException("Failed to obtain access token: ${responseCode} - ${connection.getResponseMessage()}")
+    }
+}
+
+String accessToken = getAccessToken()
+
+def getHttpResponseBody(String requestUrl, String accessToken) {
+    URL url = new URL(requestUrl)
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection()
+    connection.setRequestMethod("GET")
+    connection.setRequestProperty("Authorization", "Bearer ${accessToken}")
+    connection.connect()
+
+    int responseCode = connection.getResponseCode()
+    if (responseCode == HttpURLConnection.HTTP_OK) {
+        connection.getInputStream().getText()
+    } else {
+        throw new RuntimeException("Failed to make HTTP GET request: ${responseCode} - ${connection.getResponseMessage()}")
+    }
+}
+
+def putHttpResponseBody(String requestUrl, String requestBody, String accessToken) {
+    URL url = new URL(requestUrl)
+    HttpURLConnection connection = (HttpURLConnection) url.openConnection()
+    connection.setRequestMethod("PUT")
+    connection.setRequestProperty("Content-Type", "application/json")
+    connection.setRequestProperty("Authorization", "Bearer ${accessToken}")
+    connection.setDoOutput(true)
+
+    connection.getOutputStream().write(requestBody.getBytes("UTF-8"))
+    connection.connect()
+
+    int responseCode = connection.getResponseCode()
+    if (responseCode != HttpURLConnection.HTTP_OK) {
+        throw new RuntimeException("Failed to make HTTP PUT request: ${responseCode} - ${connection.getResponseMessage()}")
+    }
+}
+ 
+ 

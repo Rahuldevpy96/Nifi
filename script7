@@ -1,0 +1,19 @@
+import org.apache.nifi.flowfile.FlowFile
+import org.apache.nifi.processor.ProcessContext
+import org.apache.nifi.processor.ProcessSession
+
+def flowFile = session.get()
+def processorContext = context
+
+ 
+
+def firstProcessGroup = context.getProcessGroup().getProcessors().find { it.getValue().getIdentifier() == firstProcessGroupId }?.getValue()
+def secondProcessGroup = context.getProcessGroup().getProcessors().find { it.getValue().getIdentifier() == secondProcessGroupId }?.getValue()
+
+if (firstProcessGroup != null) {
+    firstProcessGroup.onTrigger(processorContext, session)
+}
+
+if (secondProcessGroup != null && firstProcessGroup != null && firstProcessGroup.isFinished()) {
+    secondProcessGroup.onTrigger(processorContext, session)
+}

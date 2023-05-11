@@ -1,0 +1,16 @@
+import org.apache.nifi.flowfile.FlowFile
+import org.apache.nifi.processor.ProcessContext
+import org.apache.nifi.processor.ProcessSession
+
+def flowFile = session.get()
+def processorContext = session.getProcessorContext()
+
+def firstProcessGroupId = "first-process-group-id"
+def secondProcessGroupId = "second-process-group-id"
+
+def firstProcessGroup = controller.getProcessor(firstProcessGroupId)
+def secondProcessGroup = controller.getProcessor(secondProcessGroupId)
+
+if (firstProcessGroup.isFinished()) {
+    secondProcessGroup.onTrigger(session, null)
+}

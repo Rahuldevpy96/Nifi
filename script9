@@ -1,0 +1,60 @@
+import groovy.json.JsonSlurper
+import org.apache.nifi.processor.io.StreamCallback
+import org.apache.nifi.processors.script.ExecuteScript
+import org.apache.nifi.stream.io.StreamUtils
+
+@Grab(group='org.codehaus.groovy.modules.http-builder', module='http-builder', version='0.7')
+
+import groovyx.net.http.RESTClient
+import static groovyx.net.http.ContentType.JSON
+import groovyx.net.http.HttpResponseDecorator
+import groovyx.net.http.HttpResponseException
+
+def nifiUrl = 'http://localhost:8080'
+def processGroupId = 'your-process-group-id'
+def username = 'a'
+def password = 'p'
+
+def client = new RESTClient(nifiUrl)
+client.auth.basic(username, password)
+
+// Fetch the current status of the Process Group
+HttpResponseDecorator resp = null
+try {
+    resp = client.get(
+        path: "/nifi-api/flow/process-groups/${processGroupId}"
+    )
+} catch (HttpResponseException e) {
+    log.error("Failed to fetch Process Group status. Response: ${e.statusCode}")
+    return
+}
+
+if (resp.status == 200) {
+    def revision = resp.data.revision
+    def state = resp.data.component.state
+
+    // If the Process Group is stopped, start it
+    if (state == 'STOPPED') {
+        HttpResponseDecorator startResp = null
+        try {
+            startResp = client.put(
+                path: "/nifi-api/flow/process-groups/${processGroupId}",
+                body: [revision: revision, state: 'RUNNING', component: [id: processGroupId, state: 'RUNNING']],
+                requestContentType: JSON
+            )
+        } catch (HttpResponseException e) {
+            log.error("Failed to start Process Group. Response: ${e.statusCode}")
+            return
+        }
+
+        if (startResp.status == 200) {
+            log.info("Successfully started Process Group.")
+        } else {
+            log.error("Failed to start Process Group. Response: ${startResp.status}")
+        }
+    } else {
+        log.info("Process Group is already running.")
+    }
+} else {
+    log.error("Failed to fetch Process Group status. Response: ${resp.status}")
+}

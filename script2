@@ -7,6 +7,7 @@ def test1ProcessGroupID = " "
 def test2ProcessGroupID = " "
 def checkIntervalMillis = 5000  
 
+
 def getHttpResponseBody(String requestUrl) {
     URL url = new URL(requestUrl)
     HttpURLConnection connection = (HttpURLConnection) url.openConnection()

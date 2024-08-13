@@ -1,0 +1,35 @@
+stages:
+  - fmt
+  - validate
+  - apply
+
+variables:
+  TF_VERSION: "1.9.3"   
+  TF_IMAGE: "hashicorp/terraform:$TF_VERSION"
+
+default:
+  image: $TF_IMAGE
+  before_script:
+    - terraform init  
+
+fmt:
+  stage: fmt
+  script:
+    - terraform fmt -check
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH  
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH 
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -auto-approve
+   
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
